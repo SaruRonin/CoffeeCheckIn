@@ -1,0 +1,27 @@
+## .NET Core
+bin/
+obj/
+*.db
+*.db-shm
+*.db-wal
+
+## User-specific files
+*.user
+*.userosscache
+*.suo
+
+## VS Code
+.vscode/
+
+## Visual Studio
+.vs/
+*.csproj.user
+
+## JetBrains Rider
+.idea/
+
+## macOS
+.DS_Store
+
+## Windows
+Thumbs.db

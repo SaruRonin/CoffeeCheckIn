@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#6F4E37">
+    <title>Coffee Check-In</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Auth Page -->
+    <div id="auth-page" class="page active">
+        <div class="auth-container">
+            <div class="auth-header">
+                <h1>Coffee Check-In</h1>
+                <p>Discover, check in, and review your favorite coffee spots</p>
+            </div>
+
+            <!-- Login Form -->
+            <div id="login-section">
+                <form id="login-form" class="auth-form">
+                    <div id="login-message" class="message" style="display: none;"></div>
+                    <div class="form-group">
+                        <label for="login-email">Email</label>
+                        <input type="email" id="login-email" required autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" required autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Log In</button>
+                </form>
+                <div class="auth-toggle">
+                    Don't have an account? <button id="show-register">Sign up</button>
+                </div>
+            </div>
+
+            <!-- Register Form -->
+            <div id="register-section" style="display: none;">
+                <form id="register-form" class="auth-form">
+                    <div id="register-message" class="message" style="display: none;"></div>
+                    <div class="form-group">
+                        <label for="register-username">Username</label>
+                        <input type="text" id="register-username" required minlength="3" maxlength="50" autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-email">Email</label>
+                        <input type="email" id="register-email" required autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Password</label>
+                        <input type="password" id="register-password" required minlength="6" autocomplete="new-password">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create Account</button>
+                </form>
+                <div class="auth-toggle">
+                    Already have an account? <button id="show-login">Log in</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="main-app" class="page">
+        <header>
+            <div class="header-actions">
+                <h1>Coffee Check-In</h1>
+                <button id="logout-btn" class="logout-btn">
+                    <span id="user-name"></span> | Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- Home Page -->
+        <div id="home-page" class="page active">
+            <div class="container">
+                <div class="page-header">
+                    <h2>Nearby Coffee Shops</h2>
+                    <p>Find your next caffeine fix</p>
+                </div>
+
+                <!-- Location Prompt -->
+                <div id="location-prompt" class="location-prompt">
+                    <h3>Finding your location...</h3>
+                    <div id="location-status">
+                        <div class="spinner"></div>
+                        <p>Please allow location access to discover nearby coffee shops</p>
+                    </div>
+                </div>
+
+                <!-- Shop List -->
+                <div id="shop-list-container" style="display: none;">
+                    <div id="shop-list" class="shop-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shop Detail Page -->
+        <div id="shop-detail-page" class="page">
+            <div class="container">
+                <button id="back-to-home" class="back-btn">
+                    &larr; Back to list
+                </button>
+
+                <div id="shop-detail-content" class="shop-detail"></div>
+
+                <div class="checkin-section">
+                    <h3>Check In Here</h3>
+                    <button id="checkin-btn" class="btn btn-primary">Check In</button>
+                    <button id="add-review-btn" class="btn btn-secondary" style="display: none; margin-top: 12px;">
+                        Add Review
+                    </button>
+                </div>
+
+                <div class="reviews-section">
+                    <h3>Reviews</h3>
+                    <div id="shop-reviews"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Page -->
+        <div id="history-page" class="page">
+            <div class="container">
+                <div class="page-header">
+                    <h2>My Check-Ins</h2>
+                    <p>Your coffee journey</p>
+                </div>
+                <div id="history-list" class="history-list"></div>
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <nav>
+            <button data-page="home" class="active">
+                <span class="nav-icon">&#9906;</span>
+                <span>Explore</span>
+            </button>
+            <button data-page="history">
+                <span class="nav-icon">&#9776;</span>
+                <span>History</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Review Modal -->
+    <div id="review-modal" class="modal-overlay">
+        <div class="modal">
+            <h3>Add Review</h3>
+            <form id="review-form">
+                <input type="hidden" id="review-checkin-id">
+                <div class="form-group">
+                    <label for="review-product">What did you try?</label>
+                    <input type="text" id="review-product" required placeholder="e.g., Cappuccino, Croissant" maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label>Rating</label>
+                    <div class="rating-input">
+                        <button type="button" data-rating="1">1</button>
+                        <button type="button" data-rating="2">2</button>
+                        <button type="button" data-rating="3">3</button>
+                        <button type="button" data-rating="4">4</button>
+                        <button type="button" data-rating="5">5</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="review-notes">Notes (optional)</label>
+                    <textarea id="review-notes" placeholder="How was it?" maxlength="1000"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="cancel-review" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
