@@ -1,13 +1,20 @@
 :root {
-    --primary: #6F4E37;
-    --secondary: #F5DEB3;
-    --accent: #3C2415;
-    --background: #FFF8DC;
+    --primary: #C4A484;
+    --primary-dark: #8B7355;
+    --secondary: #D4A574;
+    --accent: #E8DCC4;
+    --background: #0a0a0a;
+    --background-secondary: #111111;
+    --background-tertiary: #1a1a1a;
+    --card-bg: rgba(26, 26, 26, 0.8);
+    --card-border: rgba(196, 164, 132, 0.15);
     --white: #FFFFFF;
-    --error: #D32F2F;
-    --success: #388E3C;
-    --text: #333333;
-    --text-light: #666666;
+    --error: #FF6B6B;
+    --success: #6BCB77;
+    --text: #E8E8E8;
+    --text-light: #A0A0A0;
+    --text-muted: #666666;
+    --glow: rgba(196, 164, 132, 0.3);
 }
 
 * {
@@ -18,10 +25,38 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-    background-color: var(--background);
+    background: var(--background);
     color: var(--text);
     min-height: 100vh;
     line-height: 1.5;
+    overflow-x: hidden;
+}
+
+/* Animated Background Canvas */
+#bg-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+/* Gradient Overlay */
+.gradient-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background:
+        radial-gradient(ellipse at 20% 20%, rgba(196, 164, 132, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(212, 165, 116, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(139, 115, 85, 0.04) 0%, transparent 70%);
+    z-index: 1;
+    pointer-events: none;
 }
 
 /* Container */
@@ -30,22 +65,29 @@ body {
     margin: 0 auto;
     padding: 16px;
     padding-bottom: 80px;
+    position: relative;
+    z-index: 10;
 }
 
 /* Header */
 header {
-    background-color: var(--primary);
-    color: var(--white);
+    background: linear-gradient(135deg, rgba(26, 26, 26, 0.95) 0%, rgba(17, 17, 17, 0.98) 100%);
+    backdrop-filter: blur(20px);
+    color: var(--text);
     padding: 16px;
     position: sticky;
     top: 0;
     z-index: 100;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    border-bottom: 1px solid var(--card-border);
 }
 
 header h1 {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     text-align: center;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .header-actions {
@@ -61,10 +103,15 @@ header h1 {
 .logout-btn {
     background: none;
     border: none;
-    color: var(--white);
+    color: var(--text-light);
     cursor: pointer;
     padding: 8px;
-    font-size: 0.875rem;
+    font-size: 0.75rem;
+    transition: color 0.2s;
+}
+
+.logout-btn:hover {
+    color: var(--primary);
 }
 
 /* Navigation */
@@ -73,18 +120,19 @@ nav {
     bottom: 0;
     left: 0;
     right: 0;
-    background-color: var(--white);
+    background: linear-gradient(180deg, rgba(17, 17, 17, 0.95) 0%, rgba(10, 10, 10, 0.98) 100%);
+    backdrop-filter: blur(20px);
     display: flex;
     justify-content: space-around;
-    padding: 8px 0;
-    box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+    padding: 12px 0;
+    border-top: 1px solid var(--card-border);
     z-index: 100;
 }
 
 nav button {
     background: none;
     border: none;
-    color: var(--text-light);
+    color: var(--text-muted);
     cursor: pointer;
     padding: 8px 16px;
     font-size: 0.75rem;
@@ -92,9 +140,14 @@ nav button {
     flex-direction: column;
     align-items: center;
     gap: 4px;
+    transition: all 0.3s ease;
 }
 
 nav button.active {
+    color: var(--primary);
+}
+
+nav button:hover {
     color: var(--primary);
 }
 
@@ -105,6 +158,8 @@ nav button .nav-icon {
 /* Pages */
 .page {
     display: none;
+    position: relative;
+    z-index: 10;
 }
 
 .page.active {
@@ -118,95 +173,126 @@ nav button .nav-icon {
     justify-content: center;
     min-height: 100vh;
     padding: 24px;
-    background-color: var(--background);
+    position: relative;
+    z-index: 10;
 }
 
 .auth-header {
     text-align: center;
-    margin-bottom: 32px;
+    margin-bottom: 40px;
 }
 
 .auth-header h1 {
-    color: var(--primary);
-    font-size: 2rem;
-    margin-bottom: 8px;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .auth-header p {
     color: var(--text-light);
+    font-size: 0.9rem;
 }
 
 .auth-form {
-    background: var(--white);
+    background: linear-gradient(135deg, rgba(26, 26, 26, 0.9) 0%, rgba(17, 17, 17, 0.95) 100%);
+    backdrop-filter: blur(20px);
     padding: 24px;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-radius: 16px;
+    border: 1px solid var(--card-border);
+    box-shadow:
+        0 4px 24px rgba(0, 0, 0, 0.4),
+        0 0 40px rgba(196, 164, 132, 0.05);
+    max-width: 360px;
+    margin: 0 auto;
+    width: 100%;
 }
 
 .form-group {
-    margin-bottom: 16px;
+    margin-bottom: 14px;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
     font-weight: 500;
-    color: var(--text);
+    color: var(--text-light);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .form-group input {
     width: 100%;
-    padding: 12px;
-    border: 1px solid #ddd;
+    padding: 10px 14px;
+    border: 1px solid var(--card-border);
     border-radius: 8px;
-    font-size: 1rem;
+    font-size: 0.9rem;
+    background: rgba(10, 10, 10, 0.6);
+    color: var(--text);
+    transition: all 0.3s ease;
 }
 
 .form-group input:focus {
     outline: none;
     border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(196, 164, 132, 0.1);
+    background: rgba(10, 10, 10, 0.8);
+}
+
+.form-group input::placeholder {
+    color: var(--text-muted);
 }
 
 /* Buttons */
 .btn {
     width: 100%;
-    padding: 14px;
+    padding: 12px;
     border: none;
     border-radius: 8px;
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .btn-primary {
-    background-color: var(--primary);
-    color: var(--white);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: var(--background);
+    box-shadow: 0 4px 15px rgba(196, 164, 132, 0.3);
 }
 
 .btn-primary:hover {
-    background-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(196, 164, 132, 0.4);
 }
 
 .btn-secondary {
-    background-color: var(--secondary);
-    color: var(--accent);
+    background: transparent;
+    color: var(--primary);
+    border: 1px solid var(--primary);
 }
 
 .btn-secondary:hover {
-    background-color: #e8d1a0;
+    background: rgba(196, 164, 132, 0.1);
 }
 
 .btn-small {
     padding: 8px 16px;
     width: auto;
-    font-size: 0.875rem;
+    font-size: 0.75rem;
 }
 
 .auth-toggle {
     text-align: center;
-    margin-top: 16px;
-    color: var(--text-light);
+    margin-top: 20px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
 }
 
 .auth-toggle button {
@@ -215,24 +301,32 @@ nav button .nav-icon {
     color: var(--primary);
     cursor: pointer;
     font-weight: 600;
+    transition: color 0.2s;
+}
+
+.auth-toggle button:hover {
+    color: var(--secondary);
 }
 
 /* Messages */
 .message {
-    padding: 12px;
+    padding: 10px;
     border-radius: 8px;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
     text-align: center;
+    font-size: 0.85rem;
 }
 
 .message.error {
-    background-color: #FFEBEE;
+    background: rgba(255, 107, 107, 0.15);
     color: var(--error);
+    border: 1px solid rgba(255, 107, 107, 0.3);
 }
 
 .message.success {
-    background-color: #E8F5E9;
+    background: rgba(107, 203, 119, 0.15);
     color: var(--success);
+    border: 1px solid rgba(107, 203, 119, 0.3);
 }
 
 /* Shop List */
@@ -243,40 +337,43 @@ nav button .nav-icon {
 }
 
 .shop-card {
-    background: var(--white);
+    background: linear-gradient(135deg, var(--card-bg) 0%, rgba(17, 17, 17, 0.9) 100%);
+    backdrop-filter: blur(10px);
     padding: 16px;
     border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    border: 1px solid var(--card-border);
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: all 0.3s ease;
 }
 
 .shop-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+    transform: translateY(-3px);
+    border-color: rgba(196, 164, 132, 0.3);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3), 0 0 20px rgba(196, 164, 132, 0.1);
 }
 
 .shop-name {
     font-weight: 600;
-    font-size: 1.1rem;
-    color: var(--accent);
+    font-size: 1rem;
+    color: var(--text);
     margin-bottom: 4px;
 }
 
 .shop-address {
-    color: var(--text-light);
-    font-size: 0.875rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
     margin-bottom: 8px;
 }
 
 .shop-distance {
     display: inline-block;
-    background-color: var(--secondary);
-    color: var(--accent);
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 500;
+    background: linear-gradient(135deg, rgba(196, 164, 132, 0.2) 0%, rgba(196, 164, 132, 0.1) 100%);
+    color: var(--primary);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 1px solid rgba(196, 164, 132, 0.2);
 }
 
 /* Loading */
@@ -290,7 +387,7 @@ nav button .nav-icon {
     display: inline-block;
     width: 40px;
     height: 40px;
-    border: 3px solid var(--secondary);
+    border: 3px solid var(--card-border);
     border-top-color: var(--primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
@@ -302,20 +399,27 @@ nav button .nav-icon {
 
 /* Shop Detail */
 .shop-detail {
-    background: var(--white);
+    background: linear-gradient(135deg, var(--card-bg) 0%, rgba(17, 17, 17, 0.9) 100%);
+    backdrop-filter: blur(10px);
     padding: 20px;
     border-radius: 12px;
+    border: 1px solid var(--card-border);
     margin-bottom: 16px;
 }
 
 .shop-detail h2 {
-    color: var(--accent);
+    color: var(--text);
     margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .shop-detail .address {
-    color: var(--text-light);
+    color: var(--text-muted);
     margin-bottom: 16px;
+    font-size: 0.9rem;
 }
 
 .back-btn {
@@ -323,18 +427,25 @@ nav button .nav-icon {
     border: none;
     color: var(--primary);
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 0.9rem;
     margin-bottom: 16px;
     display: flex;
     align-items: center;
     gap: 4px;
+    transition: color 0.2s;
+}
+
+.back-btn:hover {
+    color: var(--secondary);
 }
 
 /* Check-in Section */
 .checkin-section {
-    background: var(--white);
+    background: linear-gradient(135deg, var(--card-bg) 0%, rgba(17, 17, 17, 0.9) 100%);
+    backdrop-filter: blur(10px);
     padding: 20px;
     border-radius: 12px;
+    border: 1px solid var(--card-border);
     margin-bottom: 16px;
     text-align: center;
 }
@@ -346,9 +457,11 @@ nav button .nav-icon {
 
 /* Reviews Section */
 .reviews-section {
-    background: var(--white);
+    background: linear-gradient(135deg, var(--card-bg) 0%, rgba(17, 17, 17, 0.9) 100%);
+    backdrop-filter: blur(10px);
     padding: 20px;
     border-radius: 12px;
+    border: 1px solid var(--card-border);
 }
 
 .reviews-section h3 {
@@ -357,7 +470,7 @@ nav button .nav-icon {
 }
 
 .review-card {
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--card-border);
     padding: 12px 0;
 }
 
@@ -374,7 +487,7 @@ nav button .nav-icon {
 
 .review-product {
     font-weight: 600;
-    color: var(--accent);
+    color: var(--text);
 }
 
 .review-rating {
@@ -382,18 +495,18 @@ nav button .nav-icon {
 }
 
 .review-meta {
-    font-size: 0.75rem;
-    color: var(--text-light);
+    font-size: 0.7rem;
+    color: var(--text-muted);
     margin-bottom: 4px;
 }
 
 .review-notes {
-    color: var(--text);
-    font-size: 0.875rem;
+    color: var(--text-light);
+    font-size: 0.85rem;
 }
 
 .no-reviews {
-    color: var(--text-light);
+    color: var(--text-muted);
     text-align: center;
     padding: 20px;
 }
@@ -406,7 +519,8 @@ nav button .nav-icon {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
     z-index: 200;
     justify-content: center;
     align-items: center;
@@ -418,13 +532,16 @@ nav button .nav-icon {
 }
 
 .modal {
-    background: var(--white);
+    background: linear-gradient(135deg, rgba(26, 26, 26, 0.98) 0%, rgba(17, 17, 17, 0.99) 100%);
+    backdrop-filter: blur(20px);
     padding: 24px;
-    border-radius: 12px;
+    border-radius: 16px;
+    border: 1px solid var(--card-border);
     width: 100%;
-    max-width: 400px;
+    max-width: 380px;
     max-height: 90vh;
     overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
 .modal h3 {
@@ -450,20 +567,21 @@ nav button .nav-icon {
 }
 
 .rating-input button {
-    width: 40px;
-    height: 40px;
-    border: 2px solid var(--secondary);
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--card-border);
     border-radius: 8px;
-    background: var(--white);
+    background: rgba(10, 10, 10, 0.6);
+    color: var(--text-light);
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 0.9rem;
     transition: all 0.2s;
 }
 
 .rating-input button:hover,
 .rating-input button.selected {
-    background: var(--primary);
-    color: var(--white);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: var(--background);
     border-color: var(--primary);
 }
 
@@ -475,10 +593,11 @@ nav button .nav-icon {
 }
 
 .history-card {
-    background: var(--white);
+    background: linear-gradient(135deg, var(--card-bg) 0%, rgba(17, 17, 17, 0.9) 100%);
+    backdrop-filter: blur(10px);
     padding: 16px;
     border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    border: 1px solid var(--card-border);
 }
 
 .history-header {
@@ -489,18 +608,18 @@ nav button .nav-icon {
 
 .history-shop {
     font-weight: 600;
-    color: var(--accent);
+    color: var(--text);
 }
 
 .history-date {
-    font-size: 0.75rem;
-    color: var(--text-light);
+    font-size: 0.7rem;
+    color: var(--text-muted);
 }
 
 .history-reviews {
     margin-top: 12px;
     padding-top: 12px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--card-border);
 }
 
 .history-review {
@@ -508,6 +627,7 @@ nav button .nav-icon {
     justify-content: space-between;
     align-items: center;
     padding: 4px 0;
+    font-size: 0.85rem;
 }
 
 .add-review-btn {
@@ -519,7 +639,7 @@ nav button .nav-icon {
 .empty-state {
     text-align: center;
     padding: 40px 20px;
-    color: var(--text-light);
+    color: var(--text-muted);
 }
 
 .empty-state h3 {
@@ -539,7 +659,7 @@ nav button .nav-icon {
 }
 
 .location-prompt p {
-    color: var(--text-light);
+    color: var(--text-muted);
     margin-bottom: 20px;
 }
 
@@ -549,27 +669,56 @@ nav button .nav-icon {
 }
 
 .page-header h2 {
-    color: var(--primary);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .page-header p {
-    color: var(--text-light);
-    font-size: 0.875rem;
+    color: var(--text-muted);
+    font-size: 0.85rem;
 }
 
 /* Textarea */
 textarea {
     width: 100%;
-    padding: 12px;
-    border: 1px solid #ddd;
+    padding: 10px 14px;
+    border: 1px solid var(--card-border);
     border-radius: 8px;
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-family: inherit;
     resize: vertical;
-    min-height: 80px;
+    min-height: 70px;
+    background: rgba(10, 10, 10, 0.6);
+    color: var(--text);
+    transition: all 0.3s ease;
 }
 
 textarea:focus {
     outline: none;
     border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(196, 164, 132, 0.1);
+}
+
+textarea::placeholder {
+    color: var(--text-muted);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--card-border);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
 }
