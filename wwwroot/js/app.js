@@ -131,6 +131,30 @@ function setupEventListeners() {
     if (closeProfileBtn) {
         closeProfileBtn.addEventListener('click', closeProfileModal);
     }
+
+    // QR Scanner
+    const qrCheckinBtn = document.getElementById('qr-checkin-btn');
+    if (qrCheckinBtn) {
+        qrCheckinBtn.addEventListener('click', openQrScanner);
+    }
+    const closeQrBtn = document.getElementById('close-qr');
+    if (closeQrBtn) {
+        closeQrBtn.addEventListener('click', closeQrScanner);
+    }
+
+    // Add Shop
+    const addShopBtn = document.getElementById('add-shop-btn');
+    if (addShopBtn) {
+        addShopBtn.addEventListener('click', openAddShopModal);
+    }
+    const cancelAddShop = document.getElementById('cancel-add-shop');
+    if (cancelAddShop) {
+        cancelAddShop.addEventListener('click', closeAddShopModal);
+    }
+    const addShopForm = document.getElementById('add-shop-form');
+    if (addShopForm) {
+        addShopForm.addEventListener('submit', handleAddShop);
+    }
 }
 
 // Auth Functions
@@ -159,6 +183,8 @@ function showMainApp() {
     applyThemeColor(currentUser.themeColor || '#6F4E37');
     requestLocation();
     loadSeededShops();
+    // Default to feed page
+    navigateTo('feed');
 }
 
 function updateUserAvatar() {
@@ -174,13 +200,21 @@ function updateUserAvatar() {
 
 function applyThemeColor(color) {
     if (!color) return;
-    document.documentElement.style.setProperty('--primary', color);
-    // Create lighter/darker variants
     const hsl = hexToHSL(color);
-    if (hsl) {
-        document.documentElement.style.setProperty('--primary-dark', `hsl(${hsl.h}, ${hsl.s}%, ${Math.max(hsl.l - 15, 10)}%)`);
-        document.documentElement.style.setProperty('--secondary', `hsl(${hsl.h}, ${Math.max(hsl.s - 10, 20)}%, ${Math.min(hsl.l + 10, 70)}%)`);
-    }
+    if (!hsl) return;
+
+    // Primary accent colors
+    document.documentElement.style.setProperty('--primary', color);
+    document.documentElement.style.setProperty('--primary-dark', `hsl(${hsl.h}, ${hsl.s}%, ${Math.max(hsl.l - 15, 10)}%)`);
+    document.documentElement.style.setProperty('--secondary', `hsl(${hsl.h}, ${Math.max(hsl.s - 10, 20)}%, ${Math.min(hsl.l + 10, 70)}%)`);
+
+    // Background colors - dark versions of the theme
+    document.documentElement.style.setProperty('--background', `hsl(${hsl.h}, ${Math.min(hsl.s, 30)}%, 4%)`);
+    document.documentElement.style.setProperty('--background-secondary', `hsl(${hsl.h}, ${Math.min(hsl.s, 25)}%, 7%)`);
+    document.documentElement.style.setProperty('--background-tertiary', `hsl(${hsl.h}, ${Math.min(hsl.s, 20)}%, 10%)`);
+    document.documentElement.style.setProperty('--card-bg', `hsla(${hsl.h}, ${Math.min(hsl.s, 20)}%, 10%, 0.8)`);
+    document.documentElement.style.setProperty('--card-border', `hsla(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 0.15)`);
+    document.documentElement.style.setProperty('--glow', `hsla(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 0.3)`);
 }
 
 function hexToHSL(hex) {
@@ -842,20 +876,71 @@ function renderHistoryList() {
 async function renderShopDetail() {
     const detailContainer = document.getElementById('shop-detail-content');
     const reviewsContainer = document.getElementById('shop-reviews');
+    const menuContainer = document.getElementById('shop-menu');
 
     detailContainer.innerHTML = `
         <h2>${escapeHtml(currentShop.name)}</h2>
         ${currentShop.address ? `<p class="address">${escapeHtml(currentShop.address)}</p>` : ''}
-        <p class="shop-distance">${formatDistance(currentShop.distance)} away</p>
+        <p class="shop-distance">${formatDistance(currentShop.distance || 0)} away</p>
     `;
 
+    // Load menu and reviews in parallel
+    menuContainer.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
     reviewsContainer.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-    const reviews = await loadShopReviews(currentShop.osmId);
 
+    const [menu, reviews] = await Promise.all([
+        loadShopMenu(currentShop.osmId),
+        loadShopReviews(currentShop.osmId)
+    ]);
+
+    renderMenu(menu);
+    renderReviews(reviews);
+}
+
+async function loadShopMenu(osmId) {
+    try {
+        const response = await fetch(`/api/menu/shop/osm/${osmId}`, { headers: getAuthHeaders() });
+        if (!response.ok) return [];
+        return await response.json();
+    } catch { return []; }
+}
+
+function renderMenu(menu) {
+    const container = document.getElementById('shop-menu');
+    if (!menu || menu.length === 0) {
+        container.innerHTML = '<p class="no-menu">No menu available</p>';
+        return;
+    }
+
+    // Group by category
+    const grouped = menu.reduce((acc, item) => {
+        if (!acc[item.category]) acc[item.category] = [];
+        acc[item.category].push(item);
+        return acc;
+    }, {});
+
+    container.innerHTML = Object.entries(grouped).map(([category, items]) => `
+        <div class="menu-category">
+            <h4>${escapeHtml(category)}</h4>
+            ${items.map(item => `
+                <div class="menu-item">
+                    <div class="menu-item-info">
+                        <div class="menu-item-name">${escapeHtml(item.name)}</div>
+                        ${item.description ? `<div class="menu-item-desc">${escapeHtml(item.description)}</div>` : ''}
+                    </div>
+                    <div class="menu-item-price">$${item.price.toFixed(2)}</div>
+                </div>
+            `).join('')}
+        </div>
+    `).join('');
+}
+
+function renderReviews(reviews) {
+    const container = document.getElementById('shop-reviews');
     if (reviews.length === 0) {
-        reviewsContainer.innerHTML = '<p class="no-reviews">No reviews yet. Be the first to review!</p>';
+        container.innerHTML = '<p class="no-reviews">No reviews yet. Be the first to review!</p>';
     } else {
-        reviewsContainer.innerHTML = reviews.map(r => `
+        container.innerHTML = reviews.map(r => `
             <div class="review-card">
                 <div class="review-header">
                     <span class="review-product">${escapeHtml(r.productName)}</span>
@@ -869,11 +954,14 @@ async function renderShopDetail() {
 }
 
 // Navigation
+const learnPage = document.getElementById('learn-page');
+
 function navigateTo(page) {
     homePage.classList.remove('active');
     shopDetailPage.classList.remove('active');
     historyPage.classList.remove('active');
     if (feedPage) feedPage.classList.remove('active');
+    if (learnPage) learnPage.classList.remove('active');
 
     navButtons.forEach(btn => btn.classList.remove('active'));
 
@@ -890,6 +978,13 @@ function navigateTo(page) {
                 feedPage.classList.add('active');
                 document.querySelector('[data-page="feed"]').classList.add('active');
                 loadFeed();
+            }
+            break;
+        case 'learn':
+            if (learnPage) {
+                learnPage.classList.add('active');
+                document.querySelector('[data-page="learn"]').classList.add('active');
+                loadLearnContent();
             }
             break;
         case 'history':
@@ -1095,6 +1190,7 @@ function openSettingsModal() {
     // Populate current values
     document.getElementById('settings-bio').value = currentUser.bio || '';
     document.getElementById('settings-avatar').value = currentUser.profilePictureUrl || '';
+    document.getElementById('settings-instagram').value = currentUser.instagramHandle || '';
     selectedThemeColor = currentUser.themeColor || '#6F4E37';
     document.getElementById('settings-theme-color').value = selectedThemeColor;
 
@@ -1139,12 +1235,13 @@ async function handleSaveSettings(e) {
     const bio = document.getElementById('settings-bio').value;
     const profilePictureUrl = document.getElementById('settings-avatar').value;
     const themeColor = document.getElementById('settings-theme-color').value;
+    const instagramHandle = document.getElementById('settings-instagram').value.replace('@', '');
 
     try {
         const response = await fetch('/api/users/me', {
             method: 'PUT',
             headers: getAuthHeaders(),
-            body: JSON.stringify({ bio, profilePictureUrl, themeColor })
+            body: JSON.stringify({ bio, profilePictureUrl, themeColor, instagramHandle })
         });
 
         if (!response.ok) throw new Error('Failed to save settings');
@@ -1155,6 +1252,7 @@ async function handleSaveSettings(e) {
         currentUser.bio = updatedProfile.bio;
         currentUser.profilePictureUrl = updatedProfile.profilePictureUrl;
         currentUser.themeColor = updatedProfile.themeColor;
+        currentUser.instagramHandle = updatedProfile.instagramHandle;
         localStorage.setItem('user', JSON.stringify(currentUser));
 
         // Apply changes
@@ -1202,9 +1300,257 @@ function renderUserProfile(profile) {
     document.getElementById('profile-checkins').textContent = profile.totalCheckIns;
     document.getElementById('profile-reviews').textContent = profile.totalReviews;
     document.getElementById('profile-joined').textContent = `Member since ${formatDate(profile.createdAt)}`;
+
+    const igLink = document.getElementById('profile-instagram');
+    if (profile.instagramHandle) {
+        igLink.href = `https://instagram.com/${profile.instagramHandle}`;
+        igLink.textContent = `@${profile.instagramHandle}`;
+        igLink.style.display = 'block';
+    } else {
+        igLink.style.display = 'none';
+    }
 }
 
 function closeProfileModal() {
     const modal = document.getElementById('profile-modal');
     if (modal) modal.classList.remove('active');
+}
+
+// Learn Page
+async function loadLearnContent() {
+    const roastsContainer = document.getElementById('roasts-content');
+    const originsContainer = document.getElementById('origins-content');
+
+    if (!roastsContainer) return;
+    roastsContainer.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+    try {
+        const [roastsRes, originsRes] = await Promise.all([
+            fetch('/api/coffeeinfo/roasts', { headers: getAuthHeaders() }),
+            fetch('/api/coffeeinfo/origins', { headers: getAuthHeaders() })
+        ]);
+
+        const roasts = roastsRes.ok ? await roastsRes.json() : {};
+        const origins = originsRes.ok ? await originsRes.json() : {};
+
+        renderRoasts(roasts);
+        renderOrigins(origins);
+    } catch (error) {
+        roastsContainer.innerHTML = '<p class="empty-state">Failed to load content</p>';
+    }
+}
+
+function renderRoasts(roasts) {
+    const container = document.getElementById('roasts-content');
+    container.innerHTML = Object.entries(roasts).map(([key, r]) => `
+        <div class="info-card">
+            <h4><span class="color-dot" style="background:${r.color}"></span> ${escapeHtml(r.name)}</h4>
+            <p>${escapeHtml(r.description)}</p>
+            <p><strong>Flavor:</strong> ${escapeHtml(r.flavor)}</p>
+            <div class="meta">
+                <span class="tag">Body: ${r.body}</span>
+                <span class="tag">Caffeine: ${r.caffeine}</span>
+                <span class="tag">Best for: ${r.bestFor}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderOrigins(origins) {
+    const container = document.getElementById('origins-content');
+    container.innerHTML = Object.entries(origins).map(([key, o]) => `
+        <div class="info-card">
+            <h4><span class="flag">${o.flag}</span> ${escapeHtml(o.country)}</h4>
+            <p>${escapeHtml(o.description)}</p>
+            <p><strong>Flavor:</strong> ${escapeHtml(o.flavor)}</p>
+            <div class="meta">
+                <span class="tag">${o.region}</span>
+                <span class="tag">${o.altitude}</span>
+                <span class="tag">${o.process}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Learn tabs event listeners
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.learn-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.learn-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            const tabName = tab.dataset.tab;
+            document.getElementById('roasts-content').style.display = tabName === 'roasts' ? 'flex' : 'none';
+            document.getElementById('origins-content').style.display = tabName === 'origins' ? 'flex' : 'none';
+        });
+    });
+});
+
+// QR Code Scanner
+let html5QrCode = null;
+
+function openQrScanner() {
+    const modal = document.getElementById('qr-modal');
+    const resultDiv = document.getElementById('qr-result');
+    if (!modal) return;
+
+    modal.classList.add('active');
+    resultDiv.textContent = '';
+    resultDiv.className = 'qr-result';
+
+    html5QrCode = new Html5Qrcode("qr-reader");
+    html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        onQrCodeSuccess,
+        onQrCodeError
+    ).catch(err => {
+        resultDiv.textContent = 'Camera access denied';
+        resultDiv.className = 'qr-result error';
+    });
+}
+
+function closeQrScanner() {
+    const modal = document.getElementById('qr-modal');
+    if (html5QrCode) {
+        html5QrCode.stop().catch(() => {});
+        html5QrCode = null;
+    }
+    if (modal) modal.classList.remove('active');
+}
+
+async function onQrCodeSuccess(decodedText) {
+    const resultDiv = document.getElementById('qr-result');
+
+    // Expected format: coffeecheckin://shop/{osmId}
+    const match = decodedText.match(/coffeecheckin:\/\/shop\/(\d+)/);
+    if (!match) {
+        resultDiv.textContent = 'Invalid QR code';
+        resultDiv.className = 'qr-result error';
+        return;
+    }
+
+    const osmId = parseInt(match[1]);
+    resultDiv.textContent = 'QR code detected! Checking in...';
+
+    // Find shop in loaded shops or seeded shops
+    let shop = shops.find(s => s.osmId === osmId) || seededShops.find(s => s.osmId === osmId);
+
+    if (!shop) {
+        resultDiv.textContent = 'Shop not found';
+        resultDiv.className = 'qr-result error';
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/checkins', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                osmId: shop.osmId,
+                shopName: shop.name,
+                latitude: shop.latitude,
+                longitude: shop.longitude,
+                address: shop.address
+            })
+        });
+
+        if (!response.ok) throw new Error('Check-in failed');
+
+        currentCheckIn = await response.json();
+        resultDiv.textContent = `Checked in to ${shop.name}!`;
+        resultDiv.className = 'qr-result';
+
+        setTimeout(() => {
+            closeQrScanner();
+            currentShop = shop;
+            navigateTo('shop-detail');
+        }, 1500);
+
+    } catch (error) {
+        resultDiv.textContent = error.message;
+        resultDiv.className = 'qr-result error';
+    }
+}
+
+function onQrCodeError(error) {
+    // Ignore scan errors (no QR in frame)
+}
+
+// Add Shop
+function openAddShopModal() {
+    const modal = document.getElementById('add-shop-modal');
+    if (modal) {
+        document.getElementById('new-shop-name').value = '';
+        document.getElementById('new-shop-address').value = '';
+        modal.classList.add('active');
+    }
+}
+
+function closeAddShopModal() {
+    const modal = document.getElementById('add-shop-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+async function handleAddShop(e) {
+    e.preventDefault();
+
+    if (!currentLocation) {
+        alert('Location required to add a shop');
+        return;
+    }
+
+    const name = document.getElementById('new-shop-name').value.trim();
+    const address = document.getElementById('new-shop-address').value.trim();
+
+    try {
+        const response = await fetch('/api/coffeeshops/add', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                name,
+                address: address || null,
+                latitude: currentLocation.lat,
+                longitude: currentLocation.lng
+            })
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.message || 'Failed to add shop');
+        }
+
+        const newShop = await response.json();
+        closeAddShopModal();
+
+        // Add to shops list and refresh
+        shops.unshift({ ...newShop, distance: 0 });
+        renderShopList();
+        addShopMarkers();
+
+        alert(`${name} added successfully! You are now the owner.`);
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+// Claim Shop
+async function claimShop(osmId) {
+    if (!confirm('Claim this shop as yours? You\'ll be able to manage its menu.')) return;
+
+    try {
+        const response = await fetch(`/api/coffeeshops/osm/${osmId}/claim`, {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.message || 'Failed to claim shop');
+        }
+
+        alert('Shop claimed successfully! You can now manage its menu.');
+        renderShopDetail();
+    } catch (error) {
+        alert(error.message);
+    }
 }

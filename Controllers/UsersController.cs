@@ -44,6 +44,7 @@ public class UsersController : ControllerBase
             Bio = user.Bio,
             ProfilePictureUrl = user.ProfilePictureUrl,
             ThemeColor = user.ThemeColor,
+            InstagramHandle = user.InstagramHandle,
             CreatedAt = user.CreatedAt,
             TotalCheckIns = totalCheckIns,
             TotalReviews = totalReviews
@@ -65,6 +66,8 @@ public class UsersController : ControllerBase
             user.ProfilePictureUrl = dto.ProfilePictureUrl;
         if (dto.ThemeColor != null)
             user.ThemeColor = dto.ThemeColor;
+        if (dto.InstagramHandle != null)
+            user.InstagramHandle = dto.InstagramHandle;
 
         await _context.SaveChangesAsync();
 
@@ -78,6 +81,7 @@ public class UsersController : ControllerBase
             Bio = user.Bio,
             ProfilePictureUrl = user.ProfilePictureUrl,
             ThemeColor = user.ThemeColor,
+            InstagramHandle = user.InstagramHandle,
             CreatedAt = user.CreatedAt,
             TotalCheckIns = totalCheckIns,
             TotalReviews = totalReviews
@@ -102,6 +106,7 @@ public class UsersController : ControllerBase
             Bio = user.Bio,
             ProfilePictureUrl = user.ProfilePictureUrl,
             ThemeColor = user.ThemeColor,
+            InstagramHandle = user.InstagramHandle,
             CreatedAt = user.CreatedAt,
             TotalCheckIns = totalCheckIns,
             TotalReviews = totalReviews

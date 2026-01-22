@@ -123,6 +123,7 @@
                     </div>
                     <div class="panel-header">
                         <h3>Nearby Coffee Shops</h3>
+                        <button id="add-shop-btn" class="btn btn-small btn-secondary">+ Add Shop</button>
                     </div>
                     <div id="shop-list" class="shop-list"></div>
                 </div>
@@ -141,9 +142,17 @@
                 <div class="checkin-section">
                     <h3>Check In Here</h3>
                     <button id="checkin-btn" class="btn btn-primary">Check In</button>
+                    <button id="qr-checkin-btn" class="btn btn-secondary" style="margin-top: 12px;">
+                        Scan QR Code
+                    </button>
                     <button id="add-review-btn" class="btn btn-secondary" style="display: none; margin-top: 12px;">
                         Add Review
                     </button>
+                </div>
+
+                <div class="menu-section">
+                    <h3>Menu</h3>
+                    <div id="shop-menu"></div>
                 </div>
 
                 <div class="reviews-section">
@@ -164,8 +173,24 @@
             </div>
         </div>
 
+        <!-- Learn Page -->
+        <div id="learn-page" class="page">
+            <div class="container">
+                <div class="page-header">
+                    <h2>Coffee Knowledge</h2>
+                    <p>Learn about roasts and origins</p>
+                </div>
+                <div class="learn-tabs">
+                    <button class="learn-tab active" data-tab="roasts">Roasts</button>
+                    <button class="learn-tab" data-tab="origins">Origins</button>
+                </div>
+                <div id="roasts-content" class="learn-content"></div>
+                <div id="origins-content" class="learn-content" style="display:none;"></div>
+            </div>
+        </div>
+
         <!-- Feed Page -->
-        <div id="feed-page" class="page">
+        <div id="feed-page" class="page active">
             <div class="container">
                 <div class="page-header">
                     <h2>Community Feed</h2>
@@ -186,17 +211,21 @@
 
         <!-- Bottom Navigation -->
         <nav>
-            <button data-page="home" class="active">
+            <button data-page="home">
                 <span class="nav-icon">&#9906;</span>
                 <span>Explore</span>
             </button>
-            <button data-page="feed">
+            <button data-page="feed" class="active">
                 <span class="nav-icon">&#9733;</span>
                 <span>Feed</span>
             </button>
+            <button data-page="learn">
+                <span class="nav-icon">&#9749;</span>
+                <span>Learn</span>
+            </button>
             <button data-page="history">
                 <span class="nav-icon">&#9776;</span>
-                <span>History</span>
+                <span>My Check-ins</span>
             </button>
         </nav>
     </div>
@@ -248,7 +277,11 @@
                     <div id="avatar-preview" class="avatar-preview"></div>
                 </div>
                 <div class="form-group">
-                    <label>Theme Color</label>
+                    <label for="settings-instagram">Instagram Handle</label>
+                    <input type="text" id="settings-instagram" placeholder="@yourusername" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label>App Theme</label>
                     <div class="color-picker">
                         <button type="button" class="color-option" data-color="#6F4E37" style="background: #6F4E37;" title="Coffee Brown"></button>
                         <button type="button" class="color-option" data-color="#8B4513" style="background: #8B4513;" title="Saddle Brown"></button>
@@ -281,6 +314,7 @@
                     <h3 id="profile-username"></h3>
                 </div>
                 <p id="profile-bio" class="profile-bio"></p>
+                <a id="profile-instagram" class="profile-instagram" href="#" target="_blank" style="display:none;"></a>
                 <div class="profile-stats">
                     <div class="stat">
                         <span id="profile-checkins" class="stat-value">0</span>
@@ -296,7 +330,41 @@
         </div>
     </div>
 
+    <!-- QR Scanner Modal -->
+    <div id="qr-modal" class="modal-overlay">
+        <div class="modal qr-modal">
+            <h3>Scan QR Code</h3>
+            <p class="qr-hint">Point camera at coffee shop's QR code</p>
+            <div id="qr-reader"></div>
+            <div id="qr-result" class="qr-result"></div>
+            <button id="close-qr" class="btn btn-secondary">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Add Shop Modal -->
+    <div id="add-shop-modal" class="modal-overlay">
+        <div class="modal">
+            <h3>Add Coffee Shop</h3>
+            <form id="add-shop-form">
+                <div class="form-group">
+                    <label for="new-shop-name">Shop Name</label>
+                    <input type="text" id="new-shop-name" required maxlength="200" placeholder="e.g., The Daily Grind">
+                </div>
+                <div class="form-group">
+                    <label for="new-shop-address">Address</label>
+                    <input type="text" id="new-shop-address" maxlength="500" placeholder="123 Coffee Lane">
+                </div>
+                <p class="form-hint">Location will use your current position</p>
+                <div class="modal-actions">
+                    <button type="button" id="cancel-add-shop" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Shop</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="js/app.js"></script>
     <script src="js/particles.js"></script>
 </body>

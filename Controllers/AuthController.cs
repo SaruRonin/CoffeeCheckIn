@@ -48,7 +48,8 @@ public class AuthController : ControllerBase
             UserId = user.Id,
             Bio = user.Bio,
             ProfilePictureUrl = user.ProfilePictureUrl,
-            ThemeColor = user.ThemeColor
+            ThemeColor = user.ThemeColor,
+            InstagramHandle = user.InstagramHandle
         });
     }
 
@@ -69,7 +70,8 @@ public class AuthController : ControllerBase
             UserId = user.Id,
             Bio = user.Bio,
             ProfilePictureUrl = user.ProfilePictureUrl,
-            ThemeColor = user.ThemeColor
+            ThemeColor = user.ThemeColor,
+            InstagramHandle = user.InstagramHandle
         });
     }
 }

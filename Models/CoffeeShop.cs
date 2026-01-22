@@ -21,5 +21,12 @@ public class CoffeeShop
 
     public DateTime CachedAt { get; set; } = DateTime.UtcNow;
 
+    // Owner (for claimed shops)
+    public int? OwnerId { get; set; }
+    public User? Owner { get; set; }
+
+    public bool IsClaimed { get; set; } = false;
+
     public ICollection<CheckIn> CheckIns { get; set; } = new List<CheckIn>();
+    public ICollection<MenuItem> MenuItems { get; set; } = new List<MenuItem>();
 }

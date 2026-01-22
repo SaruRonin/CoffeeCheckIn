@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<CoffeeShop> CoffeeShops => Set<CoffeeShop>();
     public DbSet<CheckIn> CheckIns => Set<CheckIn>();
     public DbSet<Review> Reviews => Set<Review>();
+    public DbSet<MenuItem> MenuItems => Set<MenuItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -57,6 +58,17 @@ public class AppDbContext : DbContext
                 .WithMany(c => c.Reviews)
                 .HasForeignKey(r => r.CheckInId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // MenuItem configuration
+        modelBuilder.Entity<MenuItem>(entity =>
+        {
+            entity.HasOne(m => m.CoffeeShop)
+                .WithMany(s => s.MenuItems)
+                .HasForeignKey(m => m.CoffeeShopId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(m => m.Price).HasPrecision(10, 2);
         });
     }
 }

@@ -38,6 +38,24 @@ public class CoffeeShopDto
     public double Longitude { get; set; }
     public string? Address { get; set; }
     public double? Distance { get; set; }
+    public bool IsClaimed { get; set; }
+    public int? OwnerId { get; set; }
+}
+
+public class AddShopDto
+{
+    [Required]
+    [MaxLength(200)]
+    public string Name { get; set; } = string.Empty;
+
+    [Required]
+    public double Latitude { get; set; }
+
+    [Required]
+    public double Longitude { get; set; }
+
+    [MaxLength(500)]
+    public string? Address { get; set; }
 }
 
 // CheckIn DTOs
@@ -106,6 +124,7 @@ public class UserProfileDto
     public string? Bio { get; set; }
     public string? ProfilePictureUrl { get; set; }
     public string ThemeColor { get; set; } = "#6F4E37";
+    public string? InstagramHandle { get; set; }
     public DateTime CreatedAt { get; set; }
     public int TotalCheckIns { get; set; }
     public int TotalReviews { get; set; }
@@ -122,6 +141,9 @@ public class UpdateProfileDto
     [MaxLength(7)]
     [RegularExpression(@"^#[0-9A-Fa-f]{6}$", ErrorMessage = "Invalid hex color")]
     public string? ThemeColor { get; set; }
+
+    [MaxLength(50)]
+    public string? InstagramHandle { get; set; }
 }
 
 public class AuthResponseDto
@@ -132,4 +154,5 @@ public class AuthResponseDto
     public string? Bio { get; set; }
     public string? ProfilePictureUrl { get; set; }
     public string ThemeColor { get; set; } = "#6F4E37";
+    public string? InstagramHandle { get; set; }
 }

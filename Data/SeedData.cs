@@ -195,6 +195,45 @@ public static class SeedData
         context.Reviews.AddRange(reviews);
         await context.SaveChangesAsync();
 
-        Console.WriteLine($"Seeded {users.Count} users, {coffeeShops.Count} coffee shops, {checkIns.Count} check-ins, and {reviews.Count} reviews.");
+        // Seed menu items for some shops
+        var menuItems = new List<MenuItem>();
+        var menuTemplates = new[]
+        {
+            new { Name = "Espresso", Price = 3.50m, Category = "Coffee", Desc = "Single shot of rich espresso" },
+            new { Name = "Americano", Price = 4.00m, Category = "Coffee", Desc = "Espresso with hot water" },
+            new { Name = "Cappuccino", Price = 4.50m, Category = "Coffee", Desc = "Espresso with steamed milk foam" },
+            new { Name = "Latte", Price = 5.00m, Category = "Coffee", Desc = "Espresso with steamed milk" },
+            new { Name = "Flat White", Price = 4.75m, Category = "Coffee", Desc = "Double shot with velvety milk" },
+            new { Name = "Mocha", Price = 5.50m, Category = "Coffee", Desc = "Espresso, chocolate, steamed milk" },
+            new { Name = "Cold Brew", Price = 4.50m, Category = "Cold", Desc = "Slow-steeped for 12 hours" },
+            new { Name = "Iced Latte", Price = 5.25m, Category = "Cold", Desc = "Espresso over ice with milk" },
+            new { Name = "Matcha Latte", Price = 5.50m, Category = "Tea", Desc = "Ceremonial grade matcha" },
+            new { Name = "Chai Latte", Price = 5.00m, Category = "Tea", Desc = "Spiced black tea with milk" },
+            new { Name = "Croissant", Price = 3.50m, Category = "Pastry", Desc = "Buttery, flaky pastry" },
+            new { Name = "Blueberry Muffin", Price = 3.75m, Category = "Pastry", Desc = "Fresh baked daily" },
+            new { Name = "Avocado Toast", Price = 8.50m, Category = "Food", Desc = "Sourdough with smashed avo" },
+        };
+
+        foreach (var shop in coffeeShops.Take(5))
+        {
+            var itemsToAdd = random.Next(5, 10);
+            var shuffled = menuTemplates.OrderBy(_ => random.Next()).Take(itemsToAdd);
+            foreach (var template in shuffled)
+            {
+                menuItems.Add(new MenuItem
+                {
+                    CoffeeShopId = shop.Id,
+                    Name = template.Name,
+                    Description = template.Desc,
+                    Price = template.Price + (decimal)(random.NextDouble() * 1.5 - 0.5),
+                    Category = template.Category
+                });
+            }
+        }
+
+        context.MenuItems.AddRange(menuItems);
+        await context.SaveChangesAsync();
+
+        Console.WriteLine($"Seeded {users.Count} users, {coffeeShops.Count} coffee shops, {checkIns.Count} check-ins, {reviews.Count} reviews, and {menuItems.Count} menu items.");
     }
 }

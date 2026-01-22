@@ -27,6 +27,9 @@ public class User
     [MaxLength(7)]
     public string ThemeColor { get; set; } = "#6F4E37"; // Default coffee brown
 
+    [MaxLength(50)]
+    public string? InstagramHandle { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<CheckIn> CheckIns { get; set; } = new List<CheckIn>();
