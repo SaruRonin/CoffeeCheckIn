@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0a0a0a">
     <title>Coffee Check-In</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -69,31 +70,60 @@
         <header>
             <div class="header-actions">
                 <h1>Coffee Check-In</h1>
-                <button id="logout-btn" class="logout-btn">
-                    <span id="user-name"></span> | Logout
-                </button>
+                <div class="header-right">
+                    <button id="settings-btn" class="settings-btn" title="Settings">
+                        <span id="user-avatar" class="user-avatar"></span>
+                        <span id="user-name"></span>
+                    </button>
+                    <button id="logout-btn" class="logout-btn">Logout</button>
+                </div>
             </div>
         </header>
 
         <!-- Home Page -->
         <div id="home-page" class="page active">
-            <div class="container">
-                <div class="page-header">
-                    <h2>Nearby Coffee Shops</h2>
-                    <p>Find your next caffeine fix</p>
+            <!-- Location Prompt -->
+            <div id="location-prompt" class="location-prompt">
+                <h3>Finding your location...</h3>
+                <div id="location-status">
+                    <div class="spinner"></div>
+                    <p>Please allow location access to discover nearby coffee shops</p>
+                </div>
+            </div>
+
+            <!-- Main Explore Content -->
+            <div id="explore-content" style="display: none;">
+                <!-- Search Bar -->
+                <div class="search-container">
+                    <div class="search-bar">
+                        <input type="text" id="search-input" placeholder="Search coffee shops..." autocomplete="off">
+                        <button id="search-btn" class="search-btn" type="button">
+                            <span>&#128269;</span>
+                        </button>
+                    </div>
+                    <div class="search-filters">
+                        <button class="filter-btn active" data-radius="1000">1km</button>
+                        <button class="filter-btn" data-radius="2000">2km</button>
+                        <button class="filter-btn" data-radius="5000">5km</button>
+                    </div>
                 </div>
 
-                <!-- Location Prompt -->
-                <div id="location-prompt" class="location-prompt">
-                    <h3>Finding your location...</h3>
-                    <div id="location-status">
-                        <div class="spinner"></div>
-                        <p>Please allow location access to discover nearby coffee shops</p>
+                <!-- Map Container -->
+                <div id="map-container">
+                    <div id="map"></div>
+                    <div class="map-info">
+                        <span id="shop-count-num">0</span> coffee shops found
                     </div>
                 </div>
 
                 <!-- Shop List -->
-                <div id="shop-list-container" style="display: none;">
+                <div id="shop-panel" class="shop-panel">
+                    <div class="panel-handle" id="panel-handle">
+                        <div class="handle-bar"></div>
+                    </div>
+                    <div class="panel-header">
+                        <h3>Nearby Coffee Shops</h3>
+                    </div>
                     <div id="shop-list" class="shop-list"></div>
                 </div>
             </div>
@@ -134,11 +164,35 @@
             </div>
         </div>
 
+        <!-- Feed Page -->
+        <div id="feed-page" class="page">
+            <div class="container">
+                <div class="page-header">
+                    <h2>Community Feed</h2>
+                    <p>Recent reviews from coffee lovers</p>
+                </div>
+                <div class="feed-controls">
+                    <select id="feed-sort-select" class="feed-dropdown">
+                        <option value="recent">Recent Reviews</option>
+                        <option value="place">By Place (Flat)</option>
+                        <option value="grouped">Grouped by Shop</option>
+                    </select>
+                </div>
+                <div id="feed-stats" class="feed-stats"></div>
+                <div id="feed-list" class="feed-list"></div>
+                <div id="feed-grouped" class="feed-grouped" style="display: none;"></div>
+            </div>
+        </div>
+
         <!-- Bottom Navigation -->
         <nav>
             <button data-page="home" class="active">
                 <span class="nav-icon">&#9906;</span>
                 <span>Explore</span>
+            </button>
+            <button data-page="feed">
+                <span class="nav-icon">&#9733;</span>
+                <span>Feed</span>
             </button>
             <button data-page="history">
                 <span class="nav-icon">&#9776;</span>
@@ -179,6 +233,70 @@
         </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-overlay">
+        <div class="modal settings-modal">
+            <h3>Settings</h3>
+            <form id="settings-form">
+                <div class="form-group">
+                    <label for="settings-bio">Bio</label>
+                    <textarea id="settings-bio" placeholder="Tell us about yourself..." maxlength="500"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="settings-avatar">Profile Picture URL</label>
+                    <input type="url" id="settings-avatar" placeholder="https://example.com/your-photo.jpg">
+                    <div id="avatar-preview" class="avatar-preview"></div>
+                </div>
+                <div class="form-group">
+                    <label>Theme Color</label>
+                    <div class="color-picker">
+                        <button type="button" class="color-option" data-color="#6F4E37" style="background: #6F4E37;" title="Coffee Brown"></button>
+                        <button type="button" class="color-option" data-color="#8B4513" style="background: #8B4513;" title="Saddle Brown"></button>
+                        <button type="button" class="color-option" data-color="#D2691E" style="background: #D2691E;" title="Chocolate"></button>
+                        <button type="button" class="color-option" data-color="#A0522D" style="background: #A0522D;" title="Sienna"></button>
+                        <button type="button" class="color-option" data-color="#CD853F" style="background: #CD853F;" title="Peru"></button>
+                        <button type="button" class="color-option" data-color="#B8860B" style="background: #B8860B;" title="Dark Goldenrod"></button>
+                        <button type="button" class="color-option" data-color="#556B2F" style="background: #556B2F;" title="Olive"></button>
+                        <button type="button" class="color-option" data-color="#2F4F4F" style="background: #2F4F4F;" title="Dark Slate"></button>
+                        <button type="button" class="color-option" data-color="#483D8B" style="background: #483D8B;" title="Dark Slate Blue"></button>
+                        <button type="button" class="color-option" data-color="#8B0000" style="background: #8B0000;" title="Dark Red"></button>
+                    </div>
+                    <input type="hidden" id="settings-theme-color" value="#6F4E37">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="cancel-settings" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- User Profile Modal -->
+    <div id="profile-modal" class="modal-overlay">
+        <div class="modal profile-modal">
+            <button id="close-profile" class="close-btn">&times;</button>
+            <div id="profile-content">
+                <div class="profile-header">
+                    <div id="profile-avatar" class="profile-avatar"></div>
+                    <h3 id="profile-username"></h3>
+                </div>
+                <p id="profile-bio" class="profile-bio"></p>
+                <div class="profile-stats">
+                    <div class="stat">
+                        <span id="profile-checkins" class="stat-value">0</span>
+                        <span class="stat-label">Check-ins</span>
+                    </div>
+                    <div class="stat">
+                        <span id="profile-reviews" class="stat-value">0</span>
+                        <span class="stat-label">Reviews</span>
+                    </div>
+                </div>
+                <p id="profile-joined" class="profile-joined"></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="js/app.js"></script>
     <script src="js/particles.js"></script>
 </body>

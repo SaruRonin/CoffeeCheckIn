@@ -38,11 +38,12 @@ builder.Services.AddHttpClient<OverpassService>();
 
 var app = builder.Build();
 
-// Apply migrations and create database
+// Apply migrations and create database, then seed data
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
+    await SeedData.Initialize(db);
 }
 
 // Configure the HTTP request pipeline

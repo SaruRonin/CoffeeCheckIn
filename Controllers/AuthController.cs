@@ -45,7 +45,10 @@ public class AuthController : ControllerBase
         {
             Token = token,
             Username = user.Username,
-            UserId = user.Id
+            UserId = user.Id,
+            Bio = user.Bio,
+            ProfilePictureUrl = user.ProfilePictureUrl,
+            ThemeColor = user.ThemeColor
         });
     }
 
@@ -63,7 +66,10 @@ public class AuthController : ControllerBase
         {
             Token = token,
             Username = user.Username,
-            UserId = user.Id
+            UserId = user.Id,
+            Bio = user.Bio,
+            ProfilePictureUrl = user.ProfilePictureUrl,
+            ThemeColor = user.ThemeColor
         });
     }
 }

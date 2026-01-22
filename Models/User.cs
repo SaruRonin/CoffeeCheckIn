@@ -18,6 +18,15 @@ public class User
     [Required]
     public string PasswordHash { get; set; } = string.Empty;
 
+    [MaxLength(500)]
+    public string? Bio { get; set; }
+
+    [MaxLength(200)]
+    public string? ProfilePictureUrl { get; set; }
+
+    [MaxLength(7)]
+    public string ThemeColor { get; set; } = "#6F4E37"; // Default coffee brown
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<CheckIn> CheckIns { get; set; } = new List<CheckIn>();

@@ -21,6 +21,25 @@ public class CoffeeShopsController : ControllerBase
         _overpassService = overpassService;
     }
 
+    [HttpGet("seeded")]
+    public async Task<ActionResult<List<CoffeeShopDto>>> GetSeededShops()
+    {
+        var shops = await _context.CoffeeShops
+            .OrderBy(s => s.Name)
+            .Select(s => new CoffeeShopDto
+            {
+                Id = s.Id,
+                OsmId = s.OsmId,
+                Name = s.Name,
+                Latitude = s.Latitude,
+                Longitude = s.Longitude,
+                Address = s.Address
+            })
+            .ToListAsync();
+
+        return Ok(shops);
+    }
+
     [HttpGet("nearby")]
     public async Task<ActionResult<List<CoffeeShopDto>>> GetNearby(
         [FromQuery] double lat,

@@ -28,13 +28,6 @@ public class LoginDto
     public string Password { get; set; } = string.Empty;
 }
 
-public class AuthResponseDto
-{
-    public string Token { get; set; } = string.Empty;
-    public string Username { get; set; } = string.Empty;
-    public int UserId { get; set; }
-}
-
 // CoffeeShop DTOs
 public class CoffeeShopDto
 {
@@ -99,6 +92,44 @@ public class ReviewDto
     public int Rating { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
+    public int UserId { get; set; }
     public string Username { get; set; } = string.Empty;
+    public string? UserProfilePicture { get; set; }
     public string? ShopName { get; set; }
+}
+
+// User Profile DTOs
+public class UserProfileDto
+{
+    public int Id { get; set; }
+    public string Username { get; set; } = string.Empty;
+    public string? Bio { get; set; }
+    public string? ProfilePictureUrl { get; set; }
+    public string ThemeColor { get; set; } = "#6F4E37";
+    public DateTime CreatedAt { get; set; }
+    public int TotalCheckIns { get; set; }
+    public int TotalReviews { get; set; }
+}
+
+public class UpdateProfileDto
+{
+    [MaxLength(500)]
+    public string? Bio { get; set; }
+
+    [MaxLength(200)]
+    public string? ProfilePictureUrl { get; set; }
+
+    [MaxLength(7)]
+    [RegularExpression(@"^#[0-9A-Fa-f]{6}$", ErrorMessage = "Invalid hex color")]
+    public string? ThemeColor { get; set; }
+}
+
+public class AuthResponseDto
+{
+    public string Token { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
+    public int UserId { get; set; }
+    public string? Bio { get; set; }
+    public string? ProfilePictureUrl { get; set; }
+    public string ThemeColor { get; set; } = "#6F4E37";
 }

@@ -4,7 +4,16 @@ let currentLocation = null;
 let currentShop = null;
 let currentCheckIn = null;
 let shops = [];
+let seededShops = [];
 let checkIns = [];
+let feedReviews = [];
+let groupedFeed = [];
+let map = null;
+let markers = [];
+let userMarker = null;
+let currentRadius = 1000;
+let currentFeedSort = 'recent';
+let selectedThemeColor = '#6F4E37';
 
 // DOM Elements
 const authPage = document.getElementById('auth-page');
@@ -12,6 +21,7 @@ const mainApp = document.getElementById('main-app');
 const homePage = document.getElementById('home-page');
 const shopDetailPage = document.getElementById('shop-detail-page');
 const historyPage = document.getElementById('history-page');
+const feedPage = document.getElementById('feed-page');
 const navButtons = document.querySelectorAll('nav button');
 
 // Initialize
@@ -52,6 +62,75 @@ function setupEventListeners() {
     document.querySelectorAll('.rating-input button').forEach(btn => {
         btn.addEventListener('click', () => selectRating(parseInt(btn.dataset.rating)));
     });
+
+    // Search
+    const searchBtn = document.getElementById('search-btn');
+    const searchInput = document.getElementById('search-input');
+    if (searchBtn) {
+        searchBtn.addEventListener('click', handleSearch);
+    }
+    if (searchInput) {
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSearch();
+        });
+    }
+
+    // Radius filters
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentRadius = parseInt(btn.dataset.radius);
+            if (currentLocation) {
+                loadNearbyShops();
+            }
+        });
+    });
+
+    // Panel handle
+    setupPanelDrag();
+
+    // Feed dropdown
+    const feedSortSelect = document.getElementById('feed-sort-select');
+    if (feedSortSelect) {
+        feedSortSelect.addEventListener('change', (e) => {
+            currentFeedSort = e.target.value;
+            loadFeed();
+        });
+    }
+
+    // Settings modal
+    const settingsBtn = document.getElementById('settings-btn');
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', openSettingsModal);
+    }
+
+    const cancelSettingsBtn = document.getElementById('cancel-settings');
+    if (cancelSettingsBtn) {
+        cancelSettingsBtn.addEventListener('click', closeSettingsModal);
+    }
+
+    const settingsForm = document.getElementById('settings-form');
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', handleSaveSettings);
+    }
+
+    // Color picker
+    document.querySelectorAll('.color-option').forEach(btn => {
+        btn.addEventListener('click', () => selectThemeColor(btn.dataset.color));
+    });
+
+    // Avatar preview
+    const avatarInput = document.getElementById('settings-avatar');
+    if (avatarInput) {
+        avatarInput.addEventListener('input', updateAvatarPreview);
+    }
+
+    // Profile modal
+    const closeProfileBtn = document.getElementById('close-profile');
+    if (closeProfileBtn) {
+        closeProfileBtn.addEventListener('click', closeProfileModal);
+    }
 }
 
 // Auth Functions
@@ -76,7 +155,58 @@ function showMainApp() {
     authPage.classList.remove('active');
     mainApp.classList.add('active');
     document.getElementById('user-name').textContent = currentUser.username;
+    updateUserAvatar();
+    applyThemeColor(currentUser.themeColor || '#6F4E37');
     requestLocation();
+    loadSeededShops();
+}
+
+function updateUserAvatar() {
+    const avatarEl = document.getElementById('user-avatar');
+    if (!avatarEl) return;
+
+    if (currentUser.profilePictureUrl) {
+        avatarEl.innerHTML = `<img src="${escapeHtml(currentUser.profilePictureUrl)}" alt="Avatar" onerror="this.parentElement.textContent='${currentUser.username.charAt(0).toUpperCase()}'">`;
+    } else {
+        avatarEl.textContent = currentUser.username.charAt(0).toUpperCase();
+    }
+}
+
+function applyThemeColor(color) {
+    if (!color) return;
+    document.documentElement.style.setProperty('--primary', color);
+    // Create lighter/darker variants
+    const hsl = hexToHSL(color);
+    if (hsl) {
+        document.documentElement.style.setProperty('--primary-dark', `hsl(${hsl.h}, ${hsl.s}%, ${Math.max(hsl.l - 15, 10)}%)`);
+        document.documentElement.style.setProperty('--secondary', `hsl(${hsl.h}, ${Math.max(hsl.s - 10, 20)}%, ${Math.min(hsl.l + 10, 70)}%)`);
+    }
+}
+
+function hexToHSL(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!result) return null;
+
+    let r = parseInt(result[1], 16) / 255;
+    let g = parseInt(result[2], 16) / 255;
+    let b = parseInt(result[3], 16) / 255;
+
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+
+    if (max === min) {
+        h = s = 0;
+    } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+            case g: h = ((b - r) / d + 2) / 6; break;
+            case b: h = ((r - g) / d + 4) / 6; break;
+        }
+    }
+
+    return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
 }
 
 function toggleAuthForm(form) {
@@ -111,9 +241,16 @@ async function handleLogin(e) {
             throw new Error(data.message || 'Login failed');
         }
 
+        const userData = {
+            username: data.username,
+            userId: data.userId,
+            bio: data.bio,
+            profilePictureUrl: data.profilePictureUrl,
+            themeColor: data.themeColor || '#6F4E37'
+        };
         localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify({ username: data.username, userId: data.userId }));
-        currentUser = { username: data.username, userId: data.userId };
+        localStorage.setItem('user', JSON.stringify(userData));
+        currentUser = userData;
         showMainApp();
     } catch (error) {
         showMessage('login-message', error.message, 'error');
@@ -140,9 +277,16 @@ async function handleRegister(e) {
             throw new Error(data.message || 'Registration failed');
         }
 
+        const userData = {
+            username: data.username,
+            userId: data.userId,
+            bio: data.bio,
+            profilePictureUrl: data.profilePictureUrl,
+            themeColor: data.themeColor || '#6F4E37'
+        };
         localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify({ username: data.username, userId: data.userId }));
-        currentUser = { username: data.username, userId: data.userId };
+        localStorage.setItem('user', JSON.stringify(userData));
+        currentUser = userData;
         showMainApp();
     } catch (error) {
         showMessage('register-message', error.message, 'error');
@@ -156,16 +300,20 @@ function handleLogout() {
     currentLocation = null;
     shops = [];
     checkIns = [];
+    if (map) {
+        map.remove();
+        map = null;
+    }
     showAuthPage();
 }
 
 // Location Functions
 function requestLocation() {
     const locationPrompt = document.getElementById('location-prompt');
-    const shopList = document.getElementById('shop-list-container');
+    const exploreContent = document.getElementById('explore-content');
 
     locationPrompt.style.display = 'block';
-    shopList.style.display = 'none';
+    if (exploreContent) exploreContent.style.display = 'none';
 
     if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition(
@@ -175,19 +323,183 @@ function requestLocation() {
                     lng: position.coords.longitude
                 };
                 locationPrompt.style.display = 'none';
-                shopList.style.display = 'block';
+                if (exploreContent) exploreContent.style.display = 'flex';
+                initMap();
                 loadNearbyShops();
             },
             (error) => {
                 document.getElementById('location-status').innerHTML = `
-                    <p>Unable to get your location. Please enable location services and refresh.</p>
-                    <button class="btn btn-primary" onclick="requestLocation()">Try Again</button>
+                    <p style="margin-bottom: 16px;">Unable to get your location. Please enable location services.</p>
+                    <button class="btn btn-primary btn-small" onclick="requestLocation()">Try Again</button>
                 `;
             }
         );
     } else {
         document.getElementById('location-status').innerHTML = '<p>Geolocation is not supported by your browser.</p>';
     }
+}
+
+// Search
+function handleSearch() {
+    const query = document.getElementById('search-input').value.trim().toLowerCase();
+    if (!query) {
+        renderShopList();
+        addShopMarkers();
+        return;
+    }
+
+    const filtered = shops.filter(shop =>
+        shop.name.toLowerCase().includes(query) ||
+        (shop.address && shop.address.toLowerCase().includes(query))
+    );
+
+    renderFilteredShopList(filtered);
+    updateMapMarkers(filtered);
+}
+
+function renderFilteredShopList(filteredShops) {
+    const container = document.getElementById('shop-list');
+
+    if (filteredShops.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <h3>No matches found</h3>
+                <p>Try a different search term</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = filteredShops.map((shop, index) => `
+        <div class="shop-card" onclick="viewShopDetail(${shop.osmId})" data-index="${index}">
+            <div class="shop-name">${escapeHtml(shop.name)}</div>
+            ${shop.address ? `<div class="shop-address">${escapeHtml(shop.address)}</div>` : ''}
+            <span class="shop-distance">${formatDistance(shop.distance)}</span>
+        </div>
+    `).join('');
+
+    document.getElementById('shop-count-num').textContent = filteredShops.length;
+}
+
+function updateMapMarkers(filteredShops) {
+    markers.forEach(m => map.removeLayer(m));
+    markers = [];
+
+    filteredShops.forEach((shop, index) => {
+        const markerIcon = L.divIcon({
+            className: 'coffee-marker-container',
+            html: `<div class="coffee-marker" data-index="${index}">&#9749;</div>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        });
+
+        const marker = L.marker([shop.latitude, shop.longitude], { icon: markerIcon })
+            .addTo(map);
+
+        const popupContent = `
+            <div class="popup-content">
+                <h4>${escapeHtml(shop.name)}</h4>
+                ${shop.address ? `<p>${escapeHtml(shop.address)}</p>` : ''}
+                <p>${formatDistance(shop.distance)} away</p>
+                <button class="btn btn-primary" onclick="viewShopDetail(${shop.osmId})">View Details</button>
+            </div>
+        `;
+
+        marker.bindPopup(popupContent);
+        markers.push(marker);
+    });
+
+    document.getElementById('shop-count-num').textContent = filteredShops.length;
+}
+
+// Map Functions
+function initMap() {
+    if (map) {
+        map.remove();
+    }
+
+    map = L.map('map', {
+        zoomControl: true,
+        attributionControl: false
+    }).setView([currentLocation.lat, currentLocation.lng], 14);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        subdomains: 'abcd',
+        maxZoom: 19
+    }).addTo(map);
+
+    const userIcon = L.divIcon({
+        className: 'user-marker-container',
+        html: '<div class="user-marker"></div>',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
+    });
+
+    userMarker = L.marker([currentLocation.lat, currentLocation.lng], { icon: userIcon })
+        .addTo(map)
+        .bindPopup('<div class="popup-content"><h4>You are here</h4></div>');
+}
+
+function addShopMarkers() {
+    markers.forEach(m => map.removeLayer(m));
+    markers = [];
+
+    shops.forEach((shop, index) => {
+        const markerIcon = L.divIcon({
+            className: 'coffee-marker-container',
+            html: `<div class="coffee-marker" data-index="${index}">&#9749;</div>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        });
+
+        const marker = L.marker([shop.latitude, shop.longitude], { icon: markerIcon })
+            .addTo(map);
+
+        const popupContent = `
+            <div class="popup-content">
+                <h4>${escapeHtml(shop.name)}</h4>
+                ${shop.address ? `<p>${escapeHtml(shop.address)}</p>` : ''}
+                <p>${formatDistance(shop.distance)} away</p>
+                <button class="btn btn-primary" onclick="viewShopDetail(${shop.osmId})">View Details</button>
+            </div>
+        `;
+
+        marker.bindPopup(popupContent);
+        marker.on('click', () => highlightShopInList(index));
+        markers.push(marker);
+    });
+
+    document.getElementById('shop-count-num').textContent = shops.length;
+
+    if (shops.length > 0) {
+        const bounds = L.latLngBounds([
+            [currentLocation.lat, currentLocation.lng],
+            ...shops.slice(0, 10).map(s => [s.latitude, s.longitude])
+        ]);
+        map.fitBounds(bounds, { padding: [30, 30] });
+    }
+}
+
+function highlightShopInList(index) {
+    const shopCards = document.querySelectorAll('.shop-card');
+    shopCards.forEach((card, i) => {
+        card.classList.toggle('highlighted', i === index);
+    });
+
+    const card = shopCards[index];
+    if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+function setupPanelDrag() {
+    const handle = document.getElementById('panel-handle');
+    if (!handle) return;
+
+    handle.addEventListener('click', () => {
+        const panel = document.getElementById('shop-panel');
+        if (panel) panel.classList.toggle('collapsed');
+    });
 }
 
 // API Functions
@@ -199,28 +511,76 @@ function getAuthHeaders() {
 }
 
 async function loadNearbyShops() {
-    const container = document.getElementById('shop-list');
-    container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Finding coffee shops...</p></div>';
+    const shopList = document.getElementById('shop-list');
+    shopList.innerHTML = '<div class="loading"><div class="spinner"></div><p>Finding coffee shops...</p></div>';
 
     try {
         const response = await fetch(
-            `/api/coffeeshops/nearby?lat=${currentLocation.lat}&lng=${currentLocation.lng}&radius=2000`,
+            `/api/coffeeshops/nearby?lat=${currentLocation.lat}&lng=${currentLocation.lng}&radius=${currentRadius}`,
             { headers: getAuthHeaders() }
         );
 
-        if (!response.ok) throw new Error('Failed to load shops');
+        let nearbyShops = [];
+        if (response.ok) {
+            nearbyShops = await response.json();
+        }
 
-        shops = await response.json();
+        // Merge with seeded shops, adding distance calculation
+        const seededWithDistance = seededShops.map(shop => ({
+            ...shop,
+            distance: calculateDistance(currentLocation.lat, currentLocation.lng, shop.latitude, shop.longitude)
+        }));
+
+        // Combine and dedupe by osmId
+        const allShops = [...nearbyShops];
+        const existingOsmIds = new Set(nearbyShops.map(s => s.osmId));
+
+        seededWithDistance.forEach(shop => {
+            if (!existingOsmIds.has(shop.osmId)) {
+                allShops.push(shop);
+            }
+        });
+
+        // Sort by distance
+        shops = allShops.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+
         renderShopList();
+        addShopMarkers();
+
+        // Clear search
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) searchInput.value = '';
     } catch (error) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <h3>Couldn't load shops</h3>
-                <p>${error.message}</p>
-                <button class="btn btn-primary btn-small" onclick="loadNearbyShops()">Retry</button>
-            </div>
-        `;
+        // Fall back to seeded shops only
+        if (seededShops.length > 0) {
+            shops = seededShops.map(shop => ({
+                ...shop,
+                distance: calculateDistance(currentLocation.lat, currentLocation.lng, shop.latitude, shop.longitude)
+            })).sort((a, b) => a.distance - b.distance);
+
+            renderShopList();
+            addShopMarkers();
+        } else {
+            shopList.innerHTML = `
+                <div class="empty-state">
+                    <h3>Couldn't load shops</h3>
+                    <p>${error.message}</p>
+                    <button class="btn btn-primary btn-small" onclick="loadNearbyShops()">Retry</button>
+                </div>
+            `;
+        }
     }
+}
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // Earth's radius in meters
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
 }
 
 async function loadShopReviews(osmId) {
@@ -228,7 +588,6 @@ async function loadShopReviews(osmId) {
         const response = await fetch(`/api/coffeeshops/osm/${osmId}/reviews`, {
             headers: getAuthHeaders()
         });
-
         if (!response.ok) return [];
         return await response.json();
     } catch {
@@ -242,7 +601,6 @@ async function loadCheckIns() {
 
     try {
         const response = await fetch('/api/checkins', { headers: getAuthHeaders() });
-
         if (!response.ok) throw new Error('Failed to load check-ins');
 
         checkIns = await response.json();
@@ -257,6 +615,170 @@ async function loadCheckIns() {
     }
 }
 
+async function loadFeed() {
+    const feedList = document.getElementById('feed-list');
+    const feedGrouped = document.getElementById('feed-grouped');
+    const feedStats = document.getElementById('feed-stats');
+
+    if (currentFeedSort === 'grouped') {
+        feedList.style.display = 'none';
+        feedGrouped.style.display = 'flex';
+        feedGrouped.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading feed...</p></div>';
+    } else {
+        feedList.style.display = 'flex';
+        feedGrouped.style.display = 'none';
+        feedList.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading feed...</p></div>';
+    }
+
+    try {
+        const sortParam = currentFeedSort === 'grouped' ? 'place' : currentFeedSort;
+
+        const requests = [
+            fetch(`/api/reviews/feed?sort=${sortParam}&limit=50`, { headers: getAuthHeaders() }),
+            fetch('/api/reviews/feed/stats', { headers: getAuthHeaders() })
+        ];
+
+        if (currentFeedSort === 'grouped') {
+            requests.push(fetch('/api/reviews/feed/grouped', { headers: getAuthHeaders() }));
+        }
+
+        const responses = await Promise.all(requests);
+
+        if (!responses[0].ok) throw new Error('Failed to load feed');
+
+        feedReviews = await responses[0].json();
+        const stats = responses[1].ok ? await responses[1].json() : null;
+
+        if (currentFeedSort === 'grouped' && responses[2]) {
+            groupedFeed = responses[2].ok ? await responses[2].json() : [];
+        }
+
+        renderFeedStats(stats);
+
+        if (currentFeedSort === 'grouped') {
+            renderGroupedFeed();
+        } else {
+            renderFeed();
+        }
+    } catch (error) {
+        const container = currentFeedSort === 'grouped' ? feedGrouped : feedList;
+        container.innerHTML = `
+            <div class="empty-state">
+                <h3>Couldn't load feed</h3>
+                <p>${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+function renderFeedStats(stats) {
+    const container = document.getElementById('feed-stats');
+    if (!stats) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="stat-card">
+            <div class="stat-value">${stats.totalReviews}</div>
+            <div class="stat-label">Reviews</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">${stats.avgRating}</div>
+            <div class="stat-label">Avg Rating</div>
+        </div>
+    `;
+}
+
+function renderFeed() {
+    const container = document.getElementById('feed-list');
+
+    if (feedReviews.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <h3>No reviews yet</h3>
+                <p>Be the first to share your coffee experience!</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = feedReviews.map(review => `
+        <div class="feed-card">
+            <div class="feed-header">
+                <span class="feed-user-link" onclick="viewUserProfile(${review.userId})">
+                    <span class="feed-user-avatar">${review.userProfilePicture
+                        ? `<img src="${escapeHtml(review.userProfilePicture)}" alt="" onerror="this.parentElement.textContent='${review.username.charAt(0).toUpperCase()}'">`
+                        : review.username.charAt(0).toUpperCase()}</span>
+                    <span class="feed-user">@${escapeHtml(review.username)}</span>
+                </span>
+                <span class="feed-time">${formatTimeAgo(review.createdAt)}</span>
+            </div>
+            <div class="feed-shop">at ${escapeHtml(review.shopName)}</div>
+            <div class="feed-product">
+                <span class="feed-product-name">${escapeHtml(review.productName)}</span>
+                <span class="review-rating">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</span>
+            </div>
+            ${review.notes ? `<p class="feed-notes">"${escapeHtml(review.notes)}"</p>` : ''}
+        </div>
+    `).join('');
+}
+
+function renderGroupedFeed() {
+    const container = document.getElementById('feed-grouped');
+
+    if (groupedFeed.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <h3>No reviews yet</h3>
+                <p>Be the first to share your coffee experience!</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = groupedFeed.map((group, index) => `
+        <div class="shop-group" id="shop-group-${index}">
+            <div class="shop-group-header" onclick="toggleShopGroup(${index})">
+                <div class="shop-group-info">
+                    <h4>${escapeHtml(group.shopName)}</h4>
+                    <div class="shop-group-meta">
+                        ${group.reviewCount} reviews · <span>${'★'.repeat(Math.round(group.averageRating))}</span> ${group.averageRating}
+                    </div>
+                </div>
+                <span class="shop-group-toggle">▼</span>
+            </div>
+            <div class="shop-group-reviews">
+                ${group.reviews.map(review => `
+                    <div class="feed-card">
+                        <div class="feed-header">
+                            <span class="feed-user-link" onclick="event.stopPropagation(); viewUserProfile(${review.userId})">
+                                <span class="feed-user-avatar">${review.userProfilePicture
+                                    ? `<img src="${escapeHtml(review.userProfilePicture)}" alt="" onerror="this.parentElement.textContent='${review.username.charAt(0).toUpperCase()}'">`
+                                    : review.username.charAt(0).toUpperCase()}</span>
+                                <span class="feed-user">@${escapeHtml(review.username)}</span>
+                            </span>
+                            <span class="feed-time">${formatTimeAgo(review.createdAt)}</span>
+                        </div>
+                        <div class="feed-product">
+                            <span class="feed-product-name">${escapeHtml(review.productName)}</span>
+                            <span class="review-rating">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</span>
+                        </div>
+                        ${review.notes ? `<p class="feed-notes">"${escapeHtml(review.notes)}"</p>` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
+}
+
+function toggleShopGroup(index) {
+    const group = document.getElementById(`shop-group-${index}`);
+    if (group) {
+        group.classList.toggle('expanded');
+    }
+}
+
 // Render Functions
 function renderShopList() {
     const container = document.getElementById('shop-list');
@@ -265,14 +787,14 @@ function renderShopList() {
         container.innerHTML = `
             <div class="empty-state">
                 <h3>No coffee shops found</h3>
-                <p>Try expanding your search radius or moving to a different area.</p>
+                <p>Try expanding your search radius</p>
             </div>
         `;
         return;
     }
 
-    container.innerHTML = shops.map(shop => `
-        <div class="shop-card" onclick="viewShopDetail(${shop.osmId})">
+    container.innerHTML = shops.map((shop, index) => `
+        <div class="shop-card" onclick="viewShopDetail(${shop.osmId})" data-index="${index}">
             <div class="shop-name">${escapeHtml(shop.name)}</div>
             ${shop.address ? `<div class="shop-address">${escapeHtml(shop.address)}</div>` : ''}
             <span class="shop-distance">${formatDistance(shop.distance)}</span>
@@ -287,7 +809,7 @@ function renderHistoryList() {
         container.innerHTML = `
             <div class="empty-state">
                 <h3>No check-ins yet</h3>
-                <p>Visit a coffee shop and check in to start tracking your visits!</p>
+                <p>Visit a coffee shop and check in to start tracking!</p>
             </div>
         `;
         return;
@@ -327,7 +849,6 @@ async function renderShopDetail() {
         <p class="shop-distance">${formatDistance(currentShop.distance)} away</p>
     `;
 
-    // Load reviews
     reviewsContainer.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
     const reviews = await loadShopReviews(currentShop.osmId);
 
@@ -349,20 +870,26 @@ async function renderShopDetail() {
 
 // Navigation
 function navigateTo(page) {
-    // Hide all pages
     homePage.classList.remove('active');
     shopDetailPage.classList.remove('active');
     historyPage.classList.remove('active');
+    if (feedPage) feedPage.classList.remove('active');
 
-    // Update nav
     navButtons.forEach(btn => btn.classList.remove('active'));
 
     switch (page) {
         case 'home':
             homePage.classList.add('active');
             document.querySelector('[data-page="home"]').classList.add('active');
-            if (currentLocation && shops.length === 0) {
-                loadNearbyShops();
+            if (currentLocation && map) {
+                setTimeout(() => map.invalidateSize(), 100);
+            }
+            break;
+        case 'feed':
+            if (feedPage) {
+                feedPage.classList.add('active');
+                document.querySelector('[data-page="feed"]').classList.add('active');
+                loadFeed();
             }
             break;
         case 'history':
@@ -413,7 +940,6 @@ async function handleCheckIn() {
         btn.classList.remove('btn-primary');
         btn.classList.add('btn-secondary');
 
-        // Show add review button
         document.getElementById('add-review-btn').style.display = 'block';
 
         setTimeout(() => {
@@ -496,7 +1022,6 @@ async function handleAddReview(e) {
 
         closeReviewModal();
 
-        // Refresh views
         if (currentShop) {
             renderShopDetail();
         }
@@ -527,7 +1052,6 @@ function formatDate(dateString) {
     return date.toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
-        year: 'numeric',
         hour: '2-digit',
         minute: '2-digit'
     });
@@ -537,4 +1061,150 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function formatTimeAgo(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+    return formatDate(dateString);
+}
+
+// Seeded Shops
+async function loadSeededShops() {
+    try {
+        const response = await fetch('/api/coffeeshops/seeded', { headers: getAuthHeaders() });
+        if (response.ok) {
+            seededShops = await response.json();
+        }
+    } catch (error) {
+        console.error('Failed to load seeded shops:', error);
+    }
+}
+
+// Settings Modal
+function openSettingsModal() {
+    const modal = document.getElementById('settings-modal');
+    if (!modal) return;
+
+    // Populate current values
+    document.getElementById('settings-bio').value = currentUser.bio || '';
+    document.getElementById('settings-avatar').value = currentUser.profilePictureUrl || '';
+    selectedThemeColor = currentUser.themeColor || '#6F4E37';
+    document.getElementById('settings-theme-color').value = selectedThemeColor;
+
+    // Highlight selected color
+    document.querySelectorAll('.color-option').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.color === selectedThemeColor);
+    });
+
+    updateAvatarPreview();
+    modal.classList.add('active');
+}
+
+function closeSettingsModal() {
+    const modal = document.getElementById('settings-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function selectThemeColor(color) {
+    selectedThemeColor = color;
+    document.getElementById('settings-theme-color').value = color;
+    document.querySelectorAll('.color-option').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.color === color);
+    });
+}
+
+function updateAvatarPreview() {
+    const url = document.getElementById('settings-avatar').value;
+    const preview = document.getElementById('avatar-preview');
+
+    if (url) {
+        preview.innerHTML = `<img src="${escapeHtml(url)}" alt="Preview" onerror="this.parentElement.classList.remove('visible')">`;
+        preview.classList.add('visible');
+    } else {
+        preview.classList.remove('visible');
+        preview.innerHTML = '';
+    }
+}
+
+async function handleSaveSettings(e) {
+    e.preventDefault();
+
+    const bio = document.getElementById('settings-bio').value;
+    const profilePictureUrl = document.getElementById('settings-avatar').value;
+    const themeColor = document.getElementById('settings-theme-color').value;
+
+    try {
+        const response = await fetch('/api/users/me', {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ bio, profilePictureUrl, themeColor })
+        });
+
+        if (!response.ok) throw new Error('Failed to save settings');
+
+        const updatedProfile = await response.json();
+
+        // Update local user data
+        currentUser.bio = updatedProfile.bio;
+        currentUser.profilePictureUrl = updatedProfile.profilePictureUrl;
+        currentUser.themeColor = updatedProfile.themeColor;
+        localStorage.setItem('user', JSON.stringify(currentUser));
+
+        // Apply changes
+        updateUserAvatar();
+        applyThemeColor(currentUser.themeColor);
+
+        closeSettingsModal();
+    } catch (error) {
+        alert(error.message);
+    }
+}
+
+// User Profile Modal
+async function viewUserProfile(userId) {
+    const modal = document.getElementById('profile-modal');
+    if (!modal) return;
+
+    modal.classList.add('active');
+    document.getElementById('profile-content').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+    try {
+        const response = await fetch(`/api/users/${userId}`, { headers: getAuthHeaders() });
+        if (!response.ok) throw new Error('Failed to load profile');
+
+        const profile = await response.json();
+        renderUserProfile(profile);
+    } catch (error) {
+        document.getElementById('profile-content').innerHTML = `
+            <div class="empty-state">
+                <h3>Couldn't load profile</h3>
+                <p>${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+function renderUserProfile(profile) {
+    const avatarContent = profile.profilePictureUrl
+        ? `<img src="${escapeHtml(profile.profilePictureUrl)}" alt="${escapeHtml(profile.username)}" onerror="this.parentElement.textContent='${profile.username.charAt(0).toUpperCase()}'">`
+        : profile.username.charAt(0).toUpperCase();
+
+    document.getElementById('profile-avatar').innerHTML = avatarContent;
+    document.getElementById('profile-username').textContent = profile.username;
+    document.getElementById('profile-bio').textContent = profile.bio || 'No bio yet';
+    document.getElementById('profile-checkins').textContent = profile.totalCheckIns;
+    document.getElementById('profile-reviews').textContent = profile.totalReviews;
+    document.getElementById('profile-joined').textContent = `Member since ${formatDate(profile.createdAt)}`;
+}
+
+function closeProfileModal() {
+    const modal = document.getElementById('profile-modal');
+    if (modal) modal.classList.remove('active');
 }
